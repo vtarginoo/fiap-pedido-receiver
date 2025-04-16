@@ -41,6 +41,8 @@ public class CriarPedidoUseCaseImpl implements CriarPedidoUseCase {
 
         pedidoProducer.enviarPedido(pedido); // envia pra fila
 
-        return new PedidoResponse(idPedido, "Pedido enviado com sucesso para a fila");
+
+
+        return new PedidoResponse(pedido.getId(), "Pedido enviado com sucesso para a fila");
     }
 }

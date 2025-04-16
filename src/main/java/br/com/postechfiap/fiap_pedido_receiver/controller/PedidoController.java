@@ -30,7 +30,7 @@ public class PedidoController {
     @Operation(summary = "Cria Pedido", description = "Cria pedido")
     public ResponseEntity<PedidoResponse> criarPedido(@RequestBody @Valid PedidoRequest dto) {
 
-        var pedido = criarPedidoUsecase.execute(dto);
+        PedidoResponse pedido = criarPedidoUsecase.execute(dto);
 
         return ResponseEntity.ok(pedido);
 
