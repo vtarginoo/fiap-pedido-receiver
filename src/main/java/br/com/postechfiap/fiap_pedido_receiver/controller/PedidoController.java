@@ -18,7 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 
 @RestController
-@RequestMapping(value = "/produto")
+@RequestMapping(value = "/pedido")
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "Pedido", description = "API para criar Pedido")
