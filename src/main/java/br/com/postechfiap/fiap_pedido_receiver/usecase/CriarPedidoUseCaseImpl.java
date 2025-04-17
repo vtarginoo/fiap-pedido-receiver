@@ -1,6 +1,5 @@
 package br.com.postechfiap.fiap_pedido_receiver.usecase;
 
-import br.com.postechfiap.fiap_pedido_receiver.dto.DadosPagamento;
 import br.com.postechfiap.fiap_pedido_receiver.dto.PedidoRequest;
 import br.com.postechfiap.fiap_pedido_receiver.dto.PedidoResponse;
 import br.com.postechfiap.fiap_pedido_receiver.entities.ItemPedido;
@@ -25,17 +24,11 @@ public class CriarPedidoUseCaseImpl implements CriarPedidoUseCase {
         Pedido pedido = Pedido.builder()
                 .id(idPedido)
                 .idCliente(request.getIdCliente())
+                .numeroCartao(request.getNumeroCartao())
                 .produtos(
                         request.getProdutos().stream()
                                 .map(p -> new ItemPedido(p.getSku(), p.getQuantidade()))
                                 .toList()
-                )
-                .pagamento(
-                        DadosPagamento.builder()
-                                .valor(request.getPagamento().getValor())
-                                .metodoPagamento(request.getPagamento().getMetodoPagamento())
-                                .parcelas(request.getPagamento().getParcelas())
-                                .build()
                 )
                 .build();
 

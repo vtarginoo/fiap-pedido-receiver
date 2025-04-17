@@ -27,7 +27,6 @@ public class PedidoRequest {
     private List<ItemPedidoRequest> produtos;
 
     @NotNull
-    @Valid
-    @Schema(description = "Informações do pagamento")
-    private DadosPagamento pagamento;
+    @Schema(description = "Numero Cartão")
+    private String numeroCartao;
 }
