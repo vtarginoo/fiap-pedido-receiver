@@ -17,7 +17,6 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = false)
 @ToString
 @Builder(toBuilder = true)
-@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class Pedido {
 

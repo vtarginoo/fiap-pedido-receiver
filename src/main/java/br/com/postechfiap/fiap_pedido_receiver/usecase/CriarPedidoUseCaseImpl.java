@@ -9,6 +9,8 @@ import br.com.postechfiap.fiap_pedido_receiver.producer.PedidoProducer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -30,6 +32,7 @@ public class CriarPedidoUseCaseImpl implements CriarPedidoUseCase {
                                 .map(p -> new ItemPedido(p.getSku(), p.getQuantidade()))
                                 .toList()
                 )
+                .dataCriacao(LocalDateTime.now())
                 .build();
 
         pedidoProducer.enviarPedido(pedido); // envia pra fila
