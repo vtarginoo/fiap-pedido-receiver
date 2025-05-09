@@ -27,6 +27,9 @@ public class CriarPedidoUseCaseImpl implements CriarPedidoUseCase {
                 .id(idPedido)
                 .idCliente(request.getIdCliente())
                 .numeroCartao(request.getNumeroCartao())
+                .codigoSegurancaCartao(request.getCodigoSegurancaCartao())
+                .nomeTitularCartao(request.getNomeTitularCartao())
+                .dataValidade(request.getDataValidade())
                 .produtos(
                         request.getProdutos().stream()
                                 .map(p -> new ItemPedido(p.getSku(), p.getQuantidade()))

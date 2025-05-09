@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Getter
@@ -31,4 +32,19 @@ public class PedidoRequest {
     @NotNull
     @Schema(description = "Numero Cartão")
     private String numeroCartao;
+
+    @NotNull
+    @Schema(description = "Codigo de Segurança do Cartao")
+    private String codigoSegurancaCartao;
+
+    @NotNull
+    @Schema(description = "Nome do titular do Cartao")
+    private String nomeTitularCartao;
+
+    @NotNull
+    @Schema(description = "Data de Validade do Cartao")
+    private LocalDate dataValidade;
+
+
+
 }

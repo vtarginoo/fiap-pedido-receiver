@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -24,5 +25,8 @@ public class Pedido {
     private Long idCliente;
     private List<ItemPedido> produtos;
     private String numeroCartao;
+    private String codigoSegurancaCartao;
+    private String nomeTitularCartao;
+    private LocalDate dataValidade;
     private LocalDateTime dataCriacao;
 }
