@@ -17,9 +17,9 @@ services:
     networks:
       - fiap-network
 
-  app:
+  fiap-pedido-api:
     build: .
-    container_name: pedido-api
+    container_name: fiap-pedido-api
     ports:
       - "8078:8078"
     environment:
