@@ -8,30 +8,26 @@ import br.com.postechfiap.fiap_pedido_receiver.interfaces.usecase.CriarPedidoUse
 import br.com.postechfiap.fiap_pedido_receiver.producer.PedidoProducer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.doNothing;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-
-
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -42,14 +38,16 @@ class PedidoControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean // Use @MockBean para o CriarPedidoUseCase
+    @MockitoBean
     private CriarPedidoUseCase criarPedidoUsecase;
 
-    @MockitoSpyBean // Use @SpyBean para o PedidoProducer
+    @MockitoSpyBean
     private PedidoProducer pedidoProducer;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+            .registerModule(new JavaTimeModule()) // Suporte a LocalDate e outros tipos Java 8
+            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS); // Para usar "yyyy-MM-dd" ao invés de timestamp
 
     @DisplayName("1.1 Criar Pedido - Sucesso")
     @Test
@@ -58,17 +56,19 @@ class PedidoControllerTest {
         var request = new PedidoRequest();
         request.setIdCliente(1L);
         request.setNumeroCartao("1234123412341234");
+        request.setCodigoSegurancaCartao("123");
+        request.setNomeTitularCartao("João da Silva");
+        request.setDataValidade(LocalDate.of(2025, 12, 31));
         request.setProdutos(List.of(new ItemPedidoRequest("SKU123", 2)));
 
         UUID idPedido = UUID.randomUUID();
 
-
         var response = PedidoResponse.builder()
-                .idPedido(idPedido).mensagem("Pedido enviado com sucesso para a fila")
+                .idPedido(idPedido)
+                .mensagem("Pedido enviado com sucesso para a fila")
                 .build();
 
-        doNothing().when(pedidoProducer).enviarPedido(any(Pedido.class)); // Agora você pode stubar o método do bean real
-
+        doNothing().when(pedidoProducer).enviarPedido(any(Pedido.class));
         when(criarPedidoUsecase.execute(any(PedidoRequest.class))).thenReturn(response);
 
         // Act & Assert
@@ -76,9 +76,10 @@ class PedidoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.idPedido").value(idPedido.toString())) // Use o ID gerado
+                .andExpect(jsonPath("$.idPedido").value(idPedido.toString()))
                 .andExpect(jsonPath("$.mensagem").value("Pedido enviado com sucesso para a fila"));
     }
+
     @DisplayName("1.2 Criar Pedido - Erro de validação")
     @Test
     void deveRetornarErroQuandoPedidoInvalido() throws Exception {
@@ -87,6 +88,9 @@ class PedidoControllerTest {
         {
             "id_cliente": null,
             "numero_cartao": null,
+            "codigo_seguranca_cartao": null,
+            "nome_titular_cartao": null,
+            "data_validade": null,
             "produtos": []
         }
         """;

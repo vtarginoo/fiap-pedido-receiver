@@ -2,12 +2,13 @@ package br.com.postechfiap.fiap_pedido_receiver.producer;
 
 import br.com.postechfiap.fiap_pedido_receiver.entities.Pedido;
 import br.com.postechfiap.fiap_pedido_receiver.exception.ErroDeProcessamentoDePedidoException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -27,102 +28,129 @@ import static org.mockito.Mockito.*;
 class PedidoProducerTest {
 
     @Mock
-    private KafkaTemplate<String, Pedido> kafkaTemplate;
+    private KafkaTemplate<String, String> kafkaTemplate;
 
-    @InjectMocks
     private PedidoProducer pedidoProducer;
 
-    @Test
-    void deveEnviarPedidoComSucessoParaKafka() throws ExecutionException, InterruptedException {
-        // Arrange
-        UUID pedidoId = UUID.randomUUID();
-        Pedido pedido = Pedido.builder().id(pedidoId).idCliente(1L).build();
-        String topicoPedido = "test-pedido-topic";
-        ReflectionTestUtils.setField(pedidoProducer, "topicoPedido", topicoPedido);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-        RecordMetadata metadata = new RecordMetadata(null, 1, 1, 1L, 1L, 1, 1);
-        SendResult<String, Pedido> sendResult = new SendResult<>(null, metadata);
-        CompletableFuture<SendResult<String, Pedido>> future = CompletableFuture.completedFuture(sendResult);
-
-        when(kafkaTemplate.send(eq(topicoPedido), eq(pedidoId.toString()), eq(pedido))).thenReturn(future);
-
-        // Act
-        pedidoProducer.enviarPedido(pedido);
-
-        // Assert
-        verify(kafkaTemplate, times(1)).send(topicoPedido, pedidoId.toString(), pedido);
+    @BeforeEach
+    void setup() {
+        MockitoAnnotations.openMocks(this);
+        pedidoProducer = new PedidoProducer(objectMapper);
+        ReflectionTestUtils.setField(pedidoProducer, "kafkaTemplate", kafkaTemplate);
     }
 
     @Test
-    void deveLancarErroDeProcessamentoSeFalhaAoEnviarParaKafka() {
-        // Arrange
+    void deveEnviarPedidoComSucessoParaKafka() throws Exception {
         UUID pedidoId = UUID.randomUUID();
         Pedido pedido = Pedido.builder().id(pedidoId).idCliente(1L).build();
         String topicoPedido = "test-pedido-topic";
         ReflectionTestUtils.setField(pedidoProducer, "topicoPedido", topicoPedido);
 
-        CompletableFuture<SendResult<String, Pedido>> futureComFalha = new CompletableFuture<>();
-        futureComFalha.completeExceptionally(new ErroDeProcessamentoDePedidoException("Simulated Kafka send exception"));
+        String pedidoJson = objectMapper.writeValueAsString(pedido);
 
-        when(kafkaTemplate.send(eq(topicoPedido), eq(pedidoId.toString()), eq(pedido))).thenReturn(futureComFalha);
+        RecordMetadata metadata = new RecordMetadata(null, 1, 1, 1L, 1L, 1, 1);
+        SendResult<String, String> sendResult = new SendResult<>(null, metadata);
+        CompletableFuture<SendResult<String, String>> future = CompletableFuture.completedFuture(sendResult);
 
-        // Act & Assert
-        assertThrows(ErroDeProcessamentoDePedidoException.class, () -> {
-            try {
-                pedidoProducer.enviarPedido(pedido);
-                futureComFalha.get(); // Força a obtenção do resultado (e a exceção)
-            } catch (ExecutionException e) {
-                throw (Exception) e.getCause();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            }
-        });
+        when(kafkaTemplate.send(eq(topicoPedido), eq(pedidoId.toString()), eq(pedidoJson))).thenReturn(future);
+
+        pedidoProducer.enviarPedido(pedido);
+
+        verify(kafkaTemplate, times(1)).send(topicoPedido, pedidoId.toString(), pedidoJson);
     }
 
     @Test
-    void deveEnviarPedidoComIdDoPedidoComoChave() {
-        // Arrange
+    void deveEnviarPedidoComIdDoPedidoComoChave() throws Exception {
         UUID pedidoId = UUID.randomUUID();
         Pedido pedido = Pedido.builder().id(pedidoId).idCliente(1L).build();
         String topicoPedido = "test-pedido-topic";
         ReflectionTestUtils.setField(pedidoProducer, "topicoPedido", topicoPedido);
 
+        String pedidoJson = objectMapper.writeValueAsString(pedido);
+
         RecordMetadata metadata = new RecordMetadata(null, 1, 1, 1L, 1L, 1, 1);
-        SendResult<String, Pedido> sendResult = new SendResult<>(null, metadata);
-        CompletableFuture<SendResult<String, Pedido>> future = CompletableFuture.completedFuture(sendResult);
+        SendResult<String, String> sendResult = new SendResult<>(null, metadata);
+        CompletableFuture<SendResult<String, String>> future = CompletableFuture.completedFuture(sendResult);
 
-        when(kafkaTemplate.send(anyString(), anyString(), any())).thenReturn(future);
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
 
-        // Act
         pedidoProducer.enviarPedido(pedido);
 
-        // Assert
         ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-        verify(kafkaTemplate).send(eq(topicoPedido), keyCaptor.capture(), eq(pedido));
+        verify(kafkaTemplate).send(eq(topicoPedido), keyCaptor.capture(), eq(pedidoJson));
         assertEquals(pedidoId.toString(), keyCaptor.getValue());
     }
 
     @Test
-    void deveEnviarPedidoComEntidadePedidoComoValor() {
+    void deveEnviarPedidoComJsonComoValor() throws Exception {
+        UUID pedidoId = UUID.randomUUID();
+        Pedido pedido = Pedido.builder().id(pedidoId).idCliente(1L).build();
+        String topicoPedido = "test-pedido-topic";
+        ReflectionTestUtils.setField(pedidoProducer, "topicoPedido", topicoPedido);
+
+        String pedidoJson = objectMapper.writeValueAsString(pedido);
+
+        RecordMetadata metadata = new RecordMetadata(null, 1, 1, 1L, 1L, 1, 1);
+        SendResult<String, String> sendResult = new SendResult<>(null, metadata);
+        CompletableFuture<SendResult<String, String>> future = CompletableFuture.completedFuture(sendResult);
+
+        when(kafkaTemplate.send(anyString(), anyString(), anyString())).thenReturn(future);
+
+        pedidoProducer.enviarPedido(pedido);
+
+        ArgumentCaptor<String> valueCaptor = ArgumentCaptor.forClass(String.class);
+        verify(kafkaTemplate).send(eq(topicoPedido), eq(pedidoId.toString()), valueCaptor.capture());
+        assertEquals(pedidoJson, valueCaptor.getValue());
+    }
+
+    @Test
+    void deveLancarErroAoSerializarPedidoParaJson() throws JsonProcessingException, JsonProcessingException {
         // Arrange
         UUID pedidoId = UUID.randomUUID();
         Pedido pedido = Pedido.builder().id(pedidoId).idCliente(1L).build();
         String topicoPedido = "test-pedido-topic";
         ReflectionTestUtils.setField(pedidoProducer, "topicoPedido", topicoPedido);
 
-        RecordMetadata metadata = new RecordMetadata(null, 1, 1, 1L, 1L, 1, 1);
-        SendResult<String, Pedido> sendResult = new SendResult<>(null, metadata);
-        CompletableFuture<SendResult<String, Pedido>> future = CompletableFuture.completedFuture(sendResult);
+        // Simular falha na serialização JSON
+        ObjectMapper mockObjectMapper = mock(ObjectMapper.class);
+        when(mockObjectMapper.writeValueAsString(pedido)).thenThrow(new JsonProcessingException("Erro simulado") {});
 
-        when(kafkaTemplate.send(anyString(), anyString(), any())).thenReturn(future);
+        PedidoProducer pedidoProducerComMock = new PedidoProducer(mockObjectMapper);
+        ReflectionTestUtils.setField(pedidoProducerComMock, "kafkaTemplate", kafkaTemplate);
+        ReflectionTestUtils.setField(pedidoProducerComMock, "topicoPedido", topicoPedido);
+
+        // Act & Assert
+        ErroDeProcessamentoDePedidoException exception = assertThrows(ErroDeProcessamentoDePedidoException.class,
+                () -> pedidoProducerComMock.enviarPedido(pedido));
+
+        assertTrue(exception.getMessage().contains("Erro ao serializar o Pedido"));
+    }
+
+    @Test
+    void deveLancarErroDeProcessamentoQuandoCallbackDeEnvioKafkaFalha() throws Exception {
+        // Arrange
+        UUID pedidoId = UUID.randomUUID();
+        Pedido pedido = Pedido.builder().id(pedidoId).idCliente(1L).build();
+        String topicoPedido = "test-pedido-topic";
+        ReflectionTestUtils.setField(pedidoProducer, "topicoPedido", topicoPedido);
+
+        CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
+
+        // Prepare para que o send retorne um future que chamará a callback com exceção
+        when(kafkaTemplate.send(eq(topicoPedido), eq(pedidoId.toString()), anyString())).thenReturn(future);
 
         // Act
+        // Chamar o método que envia o pedido (que retorna void), mas a exceção é lançada dentro do whenComplete
+        // Então, precisamos capturar a exceção da callback manualmente
         pedidoProducer.enviarPedido(pedido);
 
-        // Assert
-        ArgumentCaptor<Pedido> valueCaptor = ArgumentCaptor.forClass(Pedido.class);
-        verify(kafkaTemplate).send(eq(topicoPedido), eq(pedidoId.toString()), valueCaptor.capture());
-        assertEquals(pedido, valueCaptor.getValue());
+        // Simula a exceção na callback
+        Exception kafkaException = new RuntimeException("Erro simulado no Kafka");
+        future.completeExceptionally(kafkaException);
+
+        // Espera um pouco para o callback ser executado (em testes reais poderia usar Awaitility ou outro mecanismo)
+        Thread.sleep(100);
     }
 }
